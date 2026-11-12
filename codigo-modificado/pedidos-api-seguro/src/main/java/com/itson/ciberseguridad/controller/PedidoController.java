@@ -2,6 +2,7 @@ package com.itson.ciberseguridad.controller;
 
 import com.itson.ciberseguridad.dto.PedidoCreacionDTO;
 import com.itson.ciberseguridad.dto.PedidoRespuestaDTO;
+import com.itson.ciberseguridad.model.Pedido;
 import com.itson.ciberseguridad.model.Usuario;
 import com.itson.ciberseguridad.service.PedidoService;
 import com.itson.ciberseguridad.service.UsuarioAutenticadoService;
