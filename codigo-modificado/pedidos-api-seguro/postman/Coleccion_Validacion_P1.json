@@ -1,0 +1,163 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-0002-4a5b-8c6d-seg00000002",
+    "name": "P1 - Validacion: pedidos-api-seguro",
+    "description": "Coleccion para verificar que las mitigaciones de la version SEGURA de la Practica 1 funcionan: los mismos ataques de la coleccion de explotacion ahora se bloquean con 401/403/400 y el rol enviado en el JSON se ignora. Ejecute primero la API: mvn spring-boot:run. Variable {{baseUrl}} = http://localhost:8080.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "00 - Flujo legitimo: Ana consulta su pedido",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-User-Id",
+            "value": "1"
+          }
+        ],
+        "url": "{{baseUrl}}/api/pedidos/1",
+        "description": "Resultado esperado: 200 con el pedido 1 de Ana. La respuesta NO incluye password (DTO de salida)."
+      }
+    },
+    {
+      "name": "01 - BOLA bloqueado: pedido de otro usuario",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-User-Id",
+            "value": "1"
+          }
+        ],
+        "url": "{{baseUrl}}/api/pedidos/3",
+        "description": "El mismo ataque de la version vulnerable (Ana pide el pedido 3 de Beto). Resultado esperado: 403 Forbidden."
+      }
+    },
+    {
+      "name": "02 - Sin encabezado X-User-Id",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/pedidos/1",
+        "description": "Peticion sin identidad simulada. Resultado esperado: 401 Unauthorized."
+      }
+    },
+    {
+      "name": "03 - BOLA bloqueado: consultar usuario ajeno",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-User-Id",
+            "value": "1"
+          }
+        ],
+        "url": "{{baseUrl}}/api/usuarios/2",
+        "description": "Ana consulta la informacion de Beto. Resultado esperado: 403 Forbidden."
+      }
+    },
+    {
+      "name": "04 - BOLA de escritura bloqueado: dueño forzado al usuario autenticado",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-User-Id",
+            "value": "1"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"descripcion\": \"Intento de pedido con usuario ajeno\",\n  \"monto\": 2500.00,\n  \"usuario\": { \"id\": 2 }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/pedidos",
+        "description": "El cuerpo intenta inyectar \"usuario\": {\"id\":2} como en la version vulnerable. Resultado esperado: 400 (campo desconocido rechazado por el esquema estricto) o 201 con nombreUsuario 'Ana': el dueño SIEMPRE es el usuario autenticado, nunca el campo del JSON."
+      }
+    },
+    {
+      "name": "05 - Mass Assignment bloqueado: rol ignorado",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Eva Atacante\",\n  \"email\": \"eva2@atacante.mx\",\n  \"password\": \"clave12345\",\n  \"rol\": \"ADMIN\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/usuarios",
+        "description": "El mismo ataque de la version vulnerable. Resultado esperado: 400 (esquema estricto: 'rol' no es propiedad del DTO) y, en cualquier caso, el rol almacenado es USER, nunca ADMIN."
+      }
+    },
+    {
+      "name": "06 - Validacion: email invalido",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Elena\",\n  \"email\": \"correo-invalido\",\n  \"password\": \"claveSegura1\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/usuarios",
+        "description": "Resultado esperado: 400 con mensaje por campo: El correo electronico no tiene un formato valido."
+      }
+    },
+    {
+      "name": "07 - Validacion: password corto",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Fernando\",\n  \"email\": \"fernando@itson.mx\",\n  \"password\": \"123\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/usuarios",
+        "description": "Resultado esperado: 400 con mensaje: La contrasena debe tener entre 8 y 64 caracteres."
+      }
+    }
+  ]
+}
